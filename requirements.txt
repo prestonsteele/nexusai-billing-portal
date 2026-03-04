@@ -1,0 +1,3 @@
+# Python dependencies for backfill scripts
+orb-billing>=0.1.0
+python-dotenv>=1.0.0
