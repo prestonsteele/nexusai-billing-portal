@@ -9,12 +9,17 @@ export async function GET(
     const { customerId } = await params;
     const orb = getOrbClient();
 
-    // Then get their subscriptions using external_customer_id
     const subscriptions = await orb.subscriptions.list({
       external_customer_id: [customerId],
     });
 
-    return NextResponse.json(subscriptions.data);
+    // Sort so active subscriptions come first, then upcoming, then ended
+    const statusOrder: Record<string, number> = { active: 0, upcoming: 1, ended: 2 };
+    const sorted = [...subscriptions.data].sort(
+      (a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
+    );
+
+    return NextResponse.json(sorted);
   } catch (error) {
     console.error("Error fetching subscriptions:", error);
     return NextResponse.json(

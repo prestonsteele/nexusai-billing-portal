@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/layout/AppShell";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { UsageChart } from "@/components/charts/UsageChart";
 import { CostBreakdownChart } from "@/components/charts/CostBreakdownChart";
 import { GroupBySelector } from "@/components/filters/GroupBySelector";
+import { DateRangeSelector, getDateRange, type DateRangeOption } from "@/components/filters/DateRangeSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type GroupingKey } from "@/lib/orb";
+import { fetchWithCache } from "@/lib/cache";
 import {
   Coins,
   Cpu,
@@ -48,6 +50,7 @@ export default function DashboardPage() {
   const { customerId, customer } = useApp();
   const [loading, setLoading] = useState(true);
   const [groupBy, setGroupBy] = useState<GroupingKey | "none">("none");
+  const [dateRange, setDateRange] = useState<DateRangeOption>("30d");
   const [usageData, setUsageData] = useState<UsageDataPoint[]>([]);
   const [allMetrics, setAllMetrics] = useState<MetricInfo[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string>("all");
@@ -61,6 +64,7 @@ export default function DashboardPage() {
     invoiceCount: 0,
   });
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  const metricDefaultSet = useRef(false);
 
   // Available grouping keys based on customer type
   const availableKeys: GroupingKey[] =
@@ -72,10 +76,9 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchSubscription() {
       try {
-        const res = await fetch(`/api/customer/${customerId}/subscriptions`);
-        const data = await res.json();
-        if (data.length > 0) {
-          setSubscriptionId(data[0].id);
+        const data = await fetchWithCache(`/api/customer/${customerId}/subscriptions`);
+        if (Array.isArray(data) && data.length > 0) {
+          setSubscriptionId((data as { id: string }[])[0].id);
         }
       } catch (error) {
         console.error("Failed to fetch subscription:", error);
@@ -91,8 +94,10 @@ export default function DashboardPage() {
     async function fetchUsage() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/subscriptions/${subscriptionId}/usage`);
-        const data = await res.json();
+        const { timeframeStart, timeframeEnd } = getDateRange(dateRange);
+        const data = await fetchWithCache(
+          `/api/subscriptions/${subscriptionId}/usage?timeframe_start=${timeframeStart}&timeframe_end=${timeframeEnd}`
+        );
 
         // Process usage data for chart
         const processedData: Record<string, UsageDataPoint> = {};
@@ -154,6 +159,14 @@ export default function DashboardPage() {
         setAllMetrics(metrics);
         setMetricUnits(units);
         setStats((prev) => ({ ...prev, aiTokens: aiTokensTotal }));
+
+        if (!metricDefaultSet.current && metrics.length > 0) {
+          metricDefaultSet.current = true;
+          const tokenMetric = metrics.find((m) =>
+            m.name.toLowerCase().includes("token")
+          );
+          if (tokenMetric) setSelectedMetric(tokenMetric.name);
+        }
       } catch (error) {
         console.error("Failed to fetch usage:", error);
       }
@@ -161,7 +174,7 @@ export default function DashboardPage() {
     }
 
     fetchUsage();
-  }, [subscriptionId]);
+  }, [subscriptionId, dateRange]);
 
   // Fetch grouped usage data when groupBy changes
   useEffect(() => {
@@ -173,10 +186,10 @@ export default function DashboardPage() {
     async function fetchGroupedUsage() {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/subscriptions/${subscriptionId}/usage-grouped?group_by=${groupBy}`
+        const { timeframeStart, timeframeEnd } = getDateRange(dateRange);
+        const data = await fetchWithCache(
+          `/api/subscriptions/${subscriptionId}/usage-grouped?group_by=${groupBy}&timeframe_start=${timeframeStart}&timeframe_end=${timeframeEnd}`
         );
-        const data = await res.json();
 
         if (data.data) {
           setGroupedUsageData(data.data);
@@ -188,7 +201,7 @@ export default function DashboardPage() {
     }
 
     fetchGroupedUsage();
-  }, [subscriptionId, groupBy]);
+  }, [subscriptionId, groupBy, dateRange]);
 
   // Fetch costs
   useEffect(() => {
@@ -196,11 +209,14 @@ export default function DashboardPage() {
 
     async function fetchCosts() {
       try {
-        const res = await fetch(`/api/subscriptions/${subscriptionId}/costs`);
-        const data = await res.json();
+        const { timeframeStart, timeframeEnd } = getDateRange(dateRange);
+        const data = await fetchWithCache(
+          `/api/subscriptions/${subscriptionId}/costs?timeframe_start=${timeframeStart}&timeframe_end=${timeframeEnd}`
+        );
 
         if (data.data && data.data.length > 0) {
-          const costs = data.data[0];
+          // Use the last entry — with cumulative view_mode it has the full period total
+          const costs = data.data[data.data.length - 1];
           setStats((prev) => ({
             ...prev,
             currentPeriodCost: `$${parseFloat(costs.total || "0").toFixed(2)}`,
@@ -226,14 +242,13 @@ export default function DashboardPage() {
     }
 
     fetchCosts();
-  }, [subscriptionId]);
+  }, [subscriptionId, dateRange]);
 
   // Fetch credits
   useEffect(() => {
     async function fetchCredits() {
       try {
-        const res = await fetch(`/api/customer/${customerId}/credits`);
-        const data = await res.json();
+        const data = await fetchWithCache(`/api/customer/${customerId}/credits`);
 
         if (Array.isArray(data)) {
           const totalBalance = data.reduce(
@@ -254,8 +269,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchInvoices() {
       try {
-        const res = await fetch(`/api/customer/${customerId}/invoices`);
-        const data = await res.json();
+        const data = await fetchWithCache(`/api/customer/${customerId}/invoices`);
         if (Array.isArray(data)) {
           setStats((prev) => ({ ...prev, invoiceCount: data.length }));
         }
@@ -304,11 +318,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your billing and usage
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Overview of your billing and usage
+          </p>
+        </div>
+        <DateRangeSelector value={dateRange} onChange={setDateRange} />
       </div>
 
       {/* Stats Cards */}
@@ -321,7 +338,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Credit Balance"
-          value={formatNumber(stats.creditBalance)}
+          value={`$${stats.creditBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           description="Available credits"
           icon={Coins}
         />

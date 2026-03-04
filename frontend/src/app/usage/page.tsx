@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/layout/AppShell";
 import { UsageChart } from "@/components/charts/UsageChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
+import { DateRangeSelector, getDateRange, type DateRangeOption } from "@/components/filters/DateRangeSelector";
+import { fetchWithCache } from "@/lib/cache";
 
 interface UsageDataPoint {
   date: string;
@@ -41,15 +43,16 @@ export default function UsagePage() {
   const [metricTotals, setMetricTotals] = useState<MetricUsage[]>([]);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRangeOption>("30d");
+  const metricDefaultSet = useRef(false);
 
   // Fetch subscription
   useEffect(() => {
     async function fetchSubscription() {
       try {
-        const res = await fetch(`/api/customer/${customerId}/subscriptions`);
-        const data = await res.json();
-        if (data.length > 0) {
-          setSubscriptionId(data[0].id);
+        const data = await fetchWithCache(`/api/customer/${customerId}/subscriptions`);
+        if (Array.isArray(data) && data.length > 0) {
+          setSubscriptionId((data as { id: string }[])[0].id);
         }
       } catch (error) {
         console.error("Failed to fetch subscription:", error);
@@ -65,8 +68,10 @@ export default function UsagePage() {
     async function fetchUsage() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/subscriptions/${subscriptionId}/usage`);
-        const data = await res.json();
+        const { timeframeStart, timeframeEnd } = getDateRange(dateRange);
+        const data = await fetchWithCache(
+          `/api/subscriptions/${subscriptionId}/usage?timeframe_start=${timeframeStart}&timeframe_end=${timeframeEnd}`
+        );
 
         // Process usage data for chart
         const processedData: Record<string, UsageDataPoint> = {};
@@ -109,14 +114,22 @@ export default function UsagePage() {
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
         );
 
+        const totals = Object.entries(metricMap).map(([name, data]) => ({
+          metricName: name,
+          totalQuantity: data.total,
+          unit: data.unit,
+        }));
+
         setUsageData(sortedData);
-        setMetricTotals(
-          Object.entries(metricMap).map(([name, data]) => ({
-            metricName: name,
-            totalQuantity: data.total,
-            unit: data.unit,
-          }))
-        );
+        setMetricTotals(totals);
+
+        if (!metricDefaultSet.current && totals.length > 0) {
+          metricDefaultSet.current = true;
+          const tokenMetric = totals.find((m) =>
+            m.metricName.toLowerCase().includes("token")
+          );
+          if (tokenMetric) setSelectedMetric(tokenMetric.metricName);
+        }
       } catch (error) {
         console.error("Failed to fetch usage:", error);
       }
@@ -124,7 +137,7 @@ export default function UsagePage() {
     }
 
     fetchUsage();
-  }, [subscriptionId, selectedMetric]);
+  }, [subscriptionId, selectedMetric, dateRange]);
 
   // Get unique data keys for chart
   const dataKeys =
@@ -134,11 +147,14 @@ export default function UsagePage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Usage</h1>
-        <p className="text-muted-foreground">
-          Detailed view of your resource consumption
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Usage</h1>
+          <p className="text-muted-foreground">
+            Detailed view of your resource consumption
+          </p>
+        </div>
+        <DateRangeSelector value={dateRange} onChange={setDateRange} />
       </div>
 
       {/* Metric Summary */}

@@ -9,12 +9,23 @@ export async function GET(
     const { subscriptionId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const viewMode = searchParams.get("view_mode") as "periodic" | "cumulative" | null;
+    const timeframeStart = searchParams.get("timeframe_start");
+    const timeframeEnd = searchParams.get("timeframe_end");
 
     const orb = getOrbClient();
 
-    const costs = await orb.subscriptions.fetchCosts(subscriptionId, {
+    const costsParams: {
+      view_mode: "periodic" | "cumulative";
+      timeframe_start?: string;
+      timeframe_end?: string;
+    } = {
       view_mode: viewMode || "cumulative",
-    });
+    };
+
+    if (timeframeStart) costsParams.timeframe_start = timeframeStart;
+    if (timeframeEnd) costsParams.timeframe_end = timeframeEnd;
+
+    const costs = await orb.subscriptions.fetchCosts(subscriptionId, costsParams);
 
     return NextResponse.json(costs);
   } catch (error) {

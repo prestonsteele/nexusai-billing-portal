@@ -81,6 +81,7 @@ export function UsageChart({
   };
 
   return (
+    <div style={{ background: "#FBF8F0", borderRadius: "8px", padding: "8px 4px 4px" }}>
     <ResponsiveContainer width="100%" height={350}>
       <AreaChart
         data={data}
@@ -131,26 +132,26 @@ export function UsageChart({
           labelFormatter={formatTooltipLabel}
           formatter={formatTooltipValue}
           contentStyle={{
-            backgroundColor: "rgba(0, 0, 0, 0.85)",
-            borderColor: "rgba(255, 255, 255, 0.2)",
+            backgroundColor: "#130F0B",
+            borderColor: "#E4E1D8",
             borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+            boxShadow: "0 4px 12px rgba(19,15,11,0.2)",
             padding: "8px 12px",
           }}
           labelStyle={{
-            color: "rgba(255, 255, 255, 0.9)",
+            color: "rgba(251,248,240,0.9)",
             fontWeight: "500",
             marginBottom: "4px",
           }}
           itemStyle={{
-            color: "#fff",
+            color: "#FBF8F0",
           }}
         />
         {dataKeys.length > 1 && <Legend />}
         {dataKeys.map((key, index) => (
           <Area
             key={key}
-            type="monotone"
+            type="linear"
             dataKey={key}
             stroke={colors[index % colors.length]}
             fillOpacity={1}
@@ -160,5 +161,6 @@ export function UsageChart({
         ))}
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }

@@ -9,6 +9,8 @@ export async function GET(
     const { subscriptionId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const groupBy = searchParams.get("group_by");
+    const timeframeStartParam = searchParams.get("timeframe_start");
+    const timeframeEndParam = searchParams.get("timeframe_end");
 
     if (!groupBy) {
       return NextResponse.json(
@@ -19,16 +21,18 @@ export async function GET(
 
     const orb = getOrbClient();
 
-    // First get the subscription to get customer and billing period info
+    // Get the subscription to resolve the customer ID and billing period fallback
     const subscription = await orb.subscriptions.fetch(subscriptionId);
 
     const customerId = subscription.customer.id;
-    const timeframeStart = subscription.current_billing_period_start_date;
-    const timeframeEnd = subscription.current_billing_period_end_date;
+    const timeframeStart =
+      timeframeStartParam || subscription.current_billing_period_start_date;
+    const timeframeEnd =
+      timeframeEndParam || subscription.current_billing_period_end_date;
 
     if (!timeframeStart || !timeframeEnd) {
       return NextResponse.json(
-        { error: "Could not determine billing period" },
+        { error: "Could not determine timeframe" },
         { status: 400 }
       );
     }

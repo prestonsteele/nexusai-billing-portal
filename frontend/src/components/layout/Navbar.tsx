@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CustomerSelector } from "@/components/filters/CustomerSelector";
@@ -51,6 +52,17 @@ export function Navbar({ customer, onCustomerChange }: NavbarProps) {
           </div>
           <div className="flex items-center gap-4">
             <CustomerSelector value={customer} onChange={onCustomerChange} />
+            <div className="flex items-center gap-1.5 border-l pl-4">
+              <span className="text-xs text-muted-foreground">Powered by</span>
+              <Image
+                src="/Orb_Logo_Black.png"
+                alt="Orb"
+                width={56}
+                height={27}
+                className="object-contain"
+                style={{ width: "56px", height: "27px" }}
+              />
+            </div>
           </div>
         </div>
       </div>

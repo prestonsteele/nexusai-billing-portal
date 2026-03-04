@@ -10,19 +10,23 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const groupBy = searchParams.get("group_by");
     const granularity = searchParams.get("granularity") || "day";
+    const timeframeStart = searchParams.get("timeframe_start");
+    const timeframeEnd = searchParams.get("timeframe_end");
 
     const orb = getOrbClient();
 
     const usageParams: {
       granularity: "day";
       group_by?: string;
+      timeframe_start?: string;
+      timeframe_end?: string;
     } = {
       granularity: granularity as "day",
     };
 
-    if (groupBy) {
-      usageParams.group_by = groupBy;
-    }
+    if (groupBy) usageParams.group_by = groupBy;
+    if (timeframeStart) usageParams.timeframe_start = timeframeStart;
+    if (timeframeEnd) usageParams.timeframe_end = timeframeEnd;
 
     const usage = await orb.subscriptions.fetchUsage(
       subscriptionId,

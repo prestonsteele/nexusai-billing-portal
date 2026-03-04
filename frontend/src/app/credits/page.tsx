@@ -23,6 +23,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, parseISO, subDays, startOfDay } from "date-fns";
+import { getDateRange } from "@/components/filters/DateRangeSelector";
+import { fetchWithCache } from "@/lib/cache";
 import { Coins, TrendingDown, Calendar, AlertCircle } from "lucide-react";
 
 interface CreditBlock {
@@ -78,10 +80,9 @@ export default function CreditsPage() {
   useEffect(() => {
     async function fetchSubscription() {
       try {
-        const res = await fetch(`/api/customer/${customerId}/subscriptions`);
-        const data = await res.json();
-        if (data.length > 0) {
-          setSubscriptionId(data[0].id);
+        const data = await fetchWithCache(`/api/customer/${customerId}/subscriptions`);
+        if (Array.isArray(data) && data.length > 0) {
+          setSubscriptionId((data as { id: string }[])[0].id);
         }
       } catch (error) {
         console.error("Failed to fetch subscription:", error);
@@ -95,13 +96,10 @@ export default function CreditsPage() {
     async function fetchCredits() {
       setLoading(true);
       try {
-        const [creditsRes, ledgerRes] = await Promise.all([
-          fetch(`/api/customer/${customerId}/credits`),
-          fetch(`/api/customer/${customerId}/credits/ledger`),
+        const [creditsData, ledgerData] = await Promise.all([
+          fetchWithCache(`/api/customer/${customerId}/credits`),
+          fetchWithCache(`/api/customer/${customerId}/credits/ledger`),
         ]);
-
-        const creditsData = await creditsRes.json();
-        const ledgerData = await ledgerRes.json();
 
         setCredits(Array.isArray(creditsData) ? creditsData : []);
         setLedger(Array.isArray(ledgerData) ? ledgerData : []);
@@ -120,8 +118,10 @@ export default function CreditsPage() {
 
     async function fetchUsageForDistribution() {
       try {
-        const usageRes = await fetch(`/api/subscriptions/${subscriptionId}/usage`);
-        const usageDataRaw = await usageRes.json();
+        const { timeframeStart, timeframeEnd } = getDateRange("30d");
+        const usageDataRaw = await fetchWithCache(
+          `/api/subscriptions/${subscriptionId}/usage?timeframe_start=${timeframeStart}&timeframe_end=${timeframeEnd}`
+        );
 
         // Calculate total usage quantity across all metrics and per day
         let totalQuantity = 0;
@@ -331,6 +331,7 @@ export default function CreditsPage() {
           {loading ? (
             <Skeleton className="h-[250px] w-full" />
           ) : (
+            <div style={{ background: "#FBF8F0", borderRadius: "8px", padding: "8px 4px 4px" }}>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={dailyUsageData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -348,19 +349,19 @@ export default function CreditsPage() {
                 <Tooltip
                   formatter={(value) => [formatUSD(Number(value) || 0), "Usage"]}
                   contentStyle={{
-                    backgroundColor: "rgba(0, 0, 0, 0.85)",
-                    borderColor: "rgba(255, 255, 255, 0.2)",
+                    backgroundColor: "#130F0B",
+                    borderColor: "#E4E1D8",
                     borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                    boxShadow: "0 4px 12px rgba(19,15,11,0.2)",
                     padding: "8px 12px",
                   }}
                   labelStyle={{
-                    color: "rgba(255, 255, 255, 0.9)",
+                    color: "rgba(251,248,240,0.9)",
                     fontWeight: "500",
                     marginBottom: "4px",
                   }}
                   itemStyle={{
-                    color: "#fff",
+                    color: "#FBF8F0",
                   }}
                 />
                 <Bar
@@ -370,6 +371,7 @@ export default function CreditsPage() {
                 />
               </BarChart>
             </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>

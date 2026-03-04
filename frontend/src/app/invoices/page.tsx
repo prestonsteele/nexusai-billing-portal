@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Download, FileText, ExternalLink } from "lucide-react";
+import { fetchWithCache } from "@/lib/cache";
 
 interface Invoice {
   id: string;
@@ -78,8 +79,7 @@ export default function InvoicesPage() {
     async function fetchInvoices() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/customer/${customerId}/invoices`);
-        const data = await res.json();
+        const data = await fetchWithCache(`/api/customer/${customerId}/invoices`);
         setInvoices(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch invoices:", error);
@@ -93,8 +93,7 @@ export default function InvoicesPage() {
   // Fetch invoice details
   const fetchInvoiceDetails = async (invoiceId: string) => {
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}`);
-      const data = await res.json();
+      const data = await fetchWithCache(`/api/invoices/${invoiceId}`);
       setSelectedInvoice(data);
     } catch (error) {
       console.error("Failed to fetch invoice details:", error);

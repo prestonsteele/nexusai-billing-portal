@@ -42,6 +42,7 @@ export function CostBreakdownChart({ data }: CostBreakdownChartProps) {
   };
 
   return (
+    <div style={{ background: "#FBF8F0", borderRadius: "8px", padding: "8px 4px 4px" }}>
     <ResponsiveContainer width="100%" height={300}>
       <BarChart
         data={data}
@@ -65,10 +66,14 @@ export function CostBreakdownChart({ data }: CostBreakdownChartProps) {
         <Tooltip
           formatter={(value) => [formatCurrency(Number(value)), "Cost"]}
           contentStyle={{
-            backgroundColor: "hsl(var(--popover))",
-            borderColor: "hsl(var(--border))",
-            borderRadius: "var(--radius)",
+            backgroundColor: "#130F0B",
+            borderColor: "#E4E1D8",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(19,15,11,0.2)",
+            padding: "8px 12px",
           }}
+          labelStyle={{ color: "rgba(251,248,240,0.9)", fontWeight: "500", marginBottom: "4px" }}
+          itemStyle={{ color: "#FBF8F0" }}
         />
         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
           {data.map((entry, index) => (
@@ -80,5 +85,6 @@ export function CostBreakdownChart({ data }: CostBreakdownChartProps) {
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
