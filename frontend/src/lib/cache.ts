@@ -1,10 +1,12 @@
-const cache = new Map<string, { data: unknown; timestamp: number }>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cache = new Map<string, { data: any; timestamp: number }>();
 const TTL = 5 * 60 * 1000; // 5 minutes
 
-export async function fetchWithCache<T>(url: string): Promise<T> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchWithCache(url: string): Promise<any> {
   const cached = cache.get(url);
   if (cached && Date.now() - cached.timestamp < TTL) {
-    return cached.data as T;
+    return cached.data;
   }
   const res = await fetch(url);
   const data = await res.json();
