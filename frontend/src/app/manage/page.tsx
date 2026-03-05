@@ -292,8 +292,10 @@ export default function ManagePage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getPriceTypeLabel = (price: any): string => {
-    if (price.fixed_price_quantity != null && price.fixed_price_quantity > 0) return "Fixed Fee";
+    const type = price.price_type ?? "";
     const labels: Record<string, string> = {
+      usage_price: "Per Unit",
+      fixed_price: "Fixed Fee",
       unit_price: "Per Unit",
       package_price: "Package",
       tiered_price: "Tiered",
@@ -307,7 +309,6 @@ export default function ManagePage() {
       unit_with_percent_price: "Unit + %",
       grouped_allocation_price: "Grouped",
     };
-    const type = price.price_type ?? "";
     return labels[type] ?? (type.replace(/_price$/, "").replace(/_/g, " ") || "Usage");
   };
 
@@ -315,15 +316,15 @@ export default function ManagePage() {
   const getPriceRate = (price: any): string => {
     const type: string = price.price_type ?? "";
 
-    // Fixed fee (unit price with a fixed quantity)
-    if (price.fixed_price_quantity != null && price.fixed_price_quantity > 0) {
+    // Fixed fee
+    if (type === "fixed_price" || (price.fixed_price_quantity != null && price.fixed_price_quantity > 0)) {
       const amount = parseFloat(price.unit_config?.unit_amount ?? "0");
       const qty = price.fixed_price_quantity ?? 1;
       return `${formatUSD(amount * qty)} / ${price.cadence ?? "period"}`;
     }
 
-    // Unit price
-    if (type === "unit_price" && price.unit_config?.unit_amount) {
+    // Usage/unit price — Orb returns price_type "usage_price" for all usage-based unit prices
+    if ((type === "usage_price" || type === "unit_price") && price.unit_config?.unit_amount) {
       const amt = parseFloat(price.unit_config.unit_amount);
       return `${formatUSD(amt)} / unit`;
     }
@@ -513,7 +514,7 @@ export default function ManagePage() {
                               </Badge>
                             </td>
                             <td className="py-2.5 pr-4 text-muted-foreground">
-                              {price.billable_metric?.name ?? <span className="text-muted-foreground/40">—</span>}
+                              {price.item?.name ?? price.billable_metric?.name ?? <span className="text-muted-foreground/40">—</span>}
                             </td>
                             <td className="py-2.5 pr-4 text-muted-foreground">
                               {CADENCE_LABELS[price.cadence] ?? price.cadence ?? "—"}
