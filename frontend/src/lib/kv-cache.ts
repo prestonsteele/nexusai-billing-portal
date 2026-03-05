@@ -21,7 +21,11 @@ export async function kvGet<T>(key: string): Promise<T | null> {
     const redis = await getClient();
     if (!redis) return null;
     const raw = await redis.get(key);
-    if (!raw) return null;
+    if (!raw) {
+      console.log(`[kv] MISS ${key}`);
+      return null;
+    }
+    console.log(`[kv] HIT  ${key}`);
     return JSON.parse(raw) as T;
   } catch {
     return null;
