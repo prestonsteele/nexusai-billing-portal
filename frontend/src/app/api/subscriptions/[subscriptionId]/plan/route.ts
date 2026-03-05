@@ -9,28 +9,19 @@ export async function GET(
   try {
     const { subscriptionId } = await params;
 
+    // Skip KV cache so logging always fires during debugging
     const kvKey = `orb:sub:${subscriptionId}:plan`;
-    const cached = await kvGet(kvKey);
-    if (cached) return NextResponse.json(cached);
-
     const orb = getOrbClient();
 
-    // fetch() returns the full subscription including complete price_intervals
-    // with all pricing model configs (unit_config, tiered_config, etc.)
     const subscription = await orb.subscriptions.fetch(subscriptionId, ORB_CACHE_STABLE);
 
-    // Log price interval structure to help debug display issues
-    if (subscription.price_intervals?.length) {
-      const sample = subscription.price_intervals[0]?.price;
-      console.log("[plan] first price sample:", JSON.stringify({
-        price_type: sample?.price_type,
-        billable_metric: sample?.billable_metric,
-        unit_config: (sample as any)?.unit_config,
-        package_config: (sample as any)?.package_config,
-        tiered_config: (sample as any)?.tiered_config,
-        fixed_price_quantity: (sample as any)?.fixed_price_quantity,
-      }, null, 2));
-    }
+    // Dump ALL fields of every price so we can see what Orb actually returns
+    subscription.price_intervals?.forEach((interval, i) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const p = interval.price as any;
+      console.log(`[plan] price[${i}] ALL KEYS:`, Object.keys(p ?? {}));
+      console.log(`[plan] price[${i}]:`, JSON.stringify(p, null, 2));
+    });
 
     await kvSet(kvKey, subscription);
     return NextResponse.json(subscription);
