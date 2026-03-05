@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrbClient, ORB_CACHE_STABLE } from "@/lib/orb";
+import { kvGet, kvSet } from "@/lib/kv-cache";
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,11 @@ export async function GET(
 ) {
   try {
     const { customerId } = await params;
+
+    const kvKey = `orb:customer:${customerId}:invoices`;
+    const cached = await kvGet(kvKey);
+    if (cached) return NextResponse.json(cached);
+
     const orb = getOrbClient();
 
     // First get the internal customer ID from external ID
@@ -33,6 +39,7 @@ export async function GET(
 
     console.log(`Found ${allInvoices.length} invoices (${draftInvoices.data.length} draft) for customer ${customerId}`);
 
+    await kvSet(kvKey, allInvoices);
     return NextResponse.json(allInvoices);
   } catch (error) {
     console.error("Error fetching invoices:", error);

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/send-events",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/precompute",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

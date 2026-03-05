@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrbClient, ORB_CACHE_STABLE } from "@/lib/orb";
+import { kvGet, kvSet } from "@/lib/kv-cache";
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,11 @@ export async function GET(
 ) {
   try {
     const { customerId } = await params;
+
+    const kvKey = `orb:customer:${customerId}:subscriptions`;
+    const cached = await kvGet(kvKey);
+    if (cached) return NextResponse.json(cached);
+
     const orb = getOrbClient();
 
     const subscriptions = await orb.subscriptions.list(
@@ -20,6 +26,7 @@ export async function GET(
       (a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
     );
 
+    await kvSet(kvKey, sorted);
     return NextResponse.json(sorted);
   } catch (error) {
     console.error("Error fetching subscriptions:", error);

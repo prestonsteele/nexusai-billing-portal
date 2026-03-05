@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrbClient, ORB_CACHE_LIVE, ORB_CACHE_STABLE } from "@/lib/orb";
+import { kvGet, kvSet } from "@/lib/kv-cache";
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,11 @@ export async function GET(
 ) {
   try {
     const { customerId } = await params;
+
+    const kvKey = `orb:customer:${customerId}:ledger`;
+    const cached = await kvGet(kvKey);
+    if (cached) return NextResponse.json(cached);
+
     const orb = getOrbClient();
 
     // First get the customer by external ID to get internal ID
@@ -19,6 +25,7 @@ export async function GET(
     const uniqueTypes = [...new Set(entryTypes)];
     console.log(`Credit ledger for ${customerId}: ${ledger.data.length} entries, types: ${uniqueTypes.join(", ")}`);
 
+    await kvSet(kvKey, ledger.data);
     return NextResponse.json(ledger.data);
   } catch (error) {
     console.error("Error fetching credit ledger:", error);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrbClient, ORB_CACHE_LIVE, ORB_CACHE_STABLE } from "@/lib/orb";
+import { kvGet, kvSet, toDateKey } from "@/lib/kv-cache";
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +19,10 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    const kvKey = `orb:sub:${subscriptionId}:grouped:${groupBy}:${toDateKey(timeframeStartParam)}:${toDateKey(timeframeEndParam)}`;
+    const cached = await kvGet(kvKey);
+    if (cached) return NextResponse.json(cached);
 
     const orb = getOrbClient();
 
@@ -92,7 +97,9 @@ export async function GET(
       amount: value.amount,
     }));
 
-    return NextResponse.json({ data });
+    const response = { data };
+    await kvSet(kvKey, response);
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching grouped usage:", error);
     return NextResponse.json(
