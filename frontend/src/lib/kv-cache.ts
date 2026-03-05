@@ -1,19 +1,38 @@
-import { kv } from "@vercel/kv";
+import { createClient } from "redis";
 
-const KV_TTL = 600; // 10 minutes — matches ORB_CACHE_STABLE, longer than client-side 5min cache
+const KV_TTL = 600; // 10 minutes
+
+let client: ReturnType<typeof createClient> | null = null;
+
+async function getClient() {
+  const url = process.env.nexus_billing_REDIS_URL;
+  if (!url) return null;
+
+  if (!client) {
+    client = createClient({ url });
+    client.on("error", (err) => console.error("Redis error:", err));
+    await client.connect();
+  }
+  return client;
+}
 
 export async function kvGet<T>(key: string): Promise<T | null> {
   try {
-    return await kv.get<T>(key);
+    const redis = await getClient();
+    if (!redis) return null;
+    const raw = await redis.get(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
   } catch {
-    // KV not configured (e.g. local dev without .env.local KV vars) — fall through to Orb
     return null;
   }
 }
 
 export async function kvSet(key: string, value: unknown): Promise<void> {
   try {
-    await kv.set(key, value, { ex: KV_TTL });
+    const redis = await getClient();
+    if (!redis) return;
+    await redis.set(key, JSON.stringify(value), { EX: KV_TTL });
   } catch {
     // Silently fail — KV is an optimization, not a requirement
   }
