@@ -101,6 +101,14 @@ export default function ManagePage() {
     }).format(num);
   };
 
+  // For unit rates that may be very small (e.g. $0.000001/token)
+  const formatRate = (amount: number): string => {
+    if (amount === 0) return "$0.00";
+    if (amount >= 0.01) return formatUSD(amount);
+    const decimals = Math.max(2, -Math.floor(Math.log10(amount)) + 1);
+    return `$${parseFloat(amount.toFixed(decimals))}`;
+  };
+
   // Fetch data
   useEffect(() => {
     async function fetchData() {
@@ -326,7 +334,7 @@ export default function ManagePage() {
     // Usage/unit price — Orb returns price_type "usage_price" for all usage-based unit prices
     if ((type === "usage_price" || type === "unit_price") && price.unit_config?.unit_amount) {
       const amt = parseFloat(price.unit_config.unit_amount);
-      return `${formatUSD(amt)} / unit`;
+      return `${formatRate(amt)} / unit`;
     }
 
     // Package price
