@@ -116,10 +116,12 @@ export default function ManagePage() {
         const alertsData = await alertsRes.json();
         const creditsData = await creditsRes.json();
 
-        // Fetch subscription for plan overview
+        // Fetch subscription list to get the ID, then fetch full plan details
         const subsData = await fetchWithCache(`/api/customer/${customerId}/subscriptions`);
         if (Array.isArray(subsData) && subsData.length > 0) {
-          setSubscription(subsData[0]);
+          const subId = subsData[0].id;
+          const planData = await fetchWithCache(`/api/subscriptions/${subId}/plan`);
+          setSubscription(planData);
         }
 
         setTopUps(Array.isArray(topUpsData) ? topUpsData : []);

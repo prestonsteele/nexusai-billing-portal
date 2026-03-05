@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type LucideIcon } from "lucide-react";
 
@@ -8,6 +9,7 @@ interface StatsCardProps {
   value: string | number;
   description?: string;
   icon?: LucideIcon;
+  tooltip?: React.ReactNode;
   trend?: {
     value: number;
     isPositive: boolean;
@@ -19,12 +21,16 @@ export function StatsCard({
   value,
   description,
   icon: Icon,
+  tooltip,
   trend,
 }: StatsCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
+          {title}
+          {tooltip}
+        </CardTitle>
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
       </CardHeader>
       <CardContent>

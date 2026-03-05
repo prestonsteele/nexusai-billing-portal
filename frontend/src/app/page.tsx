@@ -336,24 +336,57 @@ export default function DashboardPage() {
           value={formatNumber(stats.aiTokens)}
           description="Current billing period"
           icon={Cpu}
+          tooltip={
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/subscriptions/{id}/usage"
+              description="Aggregates total token consumption across all usage events ingested for the current billing period."
+              details="Orb tallies usage in real time as events are ingested. The value here sums all metrics whose names contain 'token'."
+            />
+          }
         />
         <StatsCard
           title="Credit Balance"
           value={`$${stats.creditBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           description="Available credits"
           icon={Coins}
+          tooltip={
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/customers/{id}/credits"
+              description="Sums the balance across all active credit blocks for the customer."
+              details="Credits are consumed before converting usage to invoiced charges. Each credit block can have its own expiry date and per-unit cost basis."
+            />
+          }
         />
         <StatsCard
           title="Current Period Cost"
           value={stats.currentPeriodCost}
           description="Estimated charges"
           icon={TrendingUp}
+          tooltip={
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/subscriptions/{id}/costs"
+              description="Returns the cumulative cost total for the current billing period across all prices on the subscription."
+              details="Uses cumulative view_mode so the last data point always reflects the full period-to-date total. Updates as new events are ingested."
+            />
+          }
         />
         <StatsCard
           title="Invoices"
           value={stats.invoiceCount.toString()}
           description="Total invoices"
           icon={Receipt}
+          tooltip={
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/invoices"
+              description="Returns the count of all invoices for this customer across all statuses: issued, draft, void, and paid."
+              details="Draft invoices represent the current open billing period and are finalized automatically at period end."
+              align="right"
+            />
+          }
         />
       </div>
 
