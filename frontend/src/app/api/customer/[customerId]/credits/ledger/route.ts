@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_LIVE, ORB_CACHE_STABLE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -10,9 +10,9 @@ export async function GET(
     const orb = getOrbClient();
 
     // First get the customer by external ID to get internal ID
-    const customer = await orb.customers.fetchByExternalId(customerId);
+    const customer = await orb.customers.fetchByExternalId(customerId, ORB_CACHE_STABLE);
 
-    const ledger = await orb.customers.credits.ledger.list(customer.id);
+    const ledger = await orb.customers.credits.ledger.list(customer.id, ORB_CACHE_LIVE);
 
     // Log entry types for debugging
     const entryTypes = ledger.data.map((e: { entry_type: string }) => e.entry_type);

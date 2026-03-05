@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_STABLE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +9,7 @@ export async function GET(
     const { invoiceId } = await params;
     const orb = getOrbClient();
 
-    const invoice = await orb.invoices.fetch(invoiceId);
+    const invoice = await orb.invoices.fetch(invoiceId, ORB_CACHE_STABLE);
 
     return NextResponse.json(invoice);
   } catch (error) {

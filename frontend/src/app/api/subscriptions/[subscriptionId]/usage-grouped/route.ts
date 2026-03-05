@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_LIVE, ORB_CACHE_STABLE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +22,7 @@ export async function GET(
     const orb = getOrbClient();
 
     // Get the subscription to resolve the customer ID and billing period fallback
-    const subscription = await orb.subscriptions.fetch(subscriptionId);
+    const subscription = await orb.subscriptions.fetch(subscriptionId, ORB_CACHE_STABLE);
 
     const customerId = subscription.customer.id;
     const timeframeStart =
@@ -59,12 +59,15 @@ export async function GET(
     }
 
     // Evaluate prices with grouping
-    const result = await orb.prices.evaluateMultiple({
-      customer_id: customerId,
-      timeframe_start: timeframeStart,
-      timeframe_end: timeframeEnd,
-      price_evaluations: priceEvaluations,
-    });
+    const result = await orb.prices.evaluateMultiple(
+      {
+        customer_id: customerId,
+        timeframe_start: timeframeStart,
+        timeframe_end: timeframeEnd,
+        price_evaluations: priceEvaluations,
+      },
+      ORB_CACHE_LIVE
+    );
 
     // Process the results into a more usable format
     const groupedData: Record<string, { quantity: number; amount: string }> = {};

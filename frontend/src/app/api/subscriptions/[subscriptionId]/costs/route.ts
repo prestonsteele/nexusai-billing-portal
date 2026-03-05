@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_LIVE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +25,7 @@ export async function GET(
     if (timeframeStart) costsParams.timeframe_start = timeframeStart;
     if (timeframeEnd) costsParams.timeframe_end = timeframeEnd;
 
-    const costs = await orb.subscriptions.fetchCosts(subscriptionId, costsParams);
+    const costs = await orb.subscriptions.fetchCosts(subscriptionId, costsParams, ORB_CACHE_LIVE);
 
     return NextResponse.json(costs);
   } catch (error) {

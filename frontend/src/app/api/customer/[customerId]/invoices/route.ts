@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_STABLE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -10,17 +10,12 @@ export async function GET(
     const orb = getOrbClient();
 
     // First get the internal customer ID from external ID
-    const customer = await orb.customers.fetchByExternalId(customerId);
+    const customer = await orb.customers.fetchByExternalId(customerId, ORB_CACHE_STABLE);
 
     // Fetch all invoice statuses including draft
     const [issuedInvoices, draftInvoices] = await Promise.all([
-      orb.invoices.list({
-        customer_id: customer.id,
-      }),
-      orb.invoices.list({
-        customer_id: customer.id,
-        status: ["draft"],
-      }),
+      orb.invoices.list({ customer_id: customer.id }, ORB_CACHE_STABLE),
+      orb.invoices.list({ customer_id: customer.id, status: ["draft"] }, ORB_CACHE_STABLE),
     ]);
 
     // Combine and deduplicate invoices

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_LIVE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -30,7 +30,8 @@ export async function GET(
 
     const usage = await orb.subscriptions.fetchUsage(
       subscriptionId,
-      usageParams
+      usageParams,
+      ORB_CACHE_LIVE
     );
 
     return NextResponse.json(usage);

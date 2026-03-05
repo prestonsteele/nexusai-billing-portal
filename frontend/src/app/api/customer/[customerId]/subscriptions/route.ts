@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrbClient } from "@/lib/orb";
+import { getOrbClient, ORB_CACHE_STABLE } from "@/lib/orb";
 
 export async function GET(
   request: NextRequest,
@@ -9,9 +9,10 @@ export async function GET(
     const { customerId } = await params;
     const orb = getOrbClient();
 
-    const subscriptions = await orb.subscriptions.list({
-      external_customer_id: [customerId],
-    });
+    const subscriptions = await orb.subscriptions.list(
+      { external_customer_id: [customerId] },
+      ORB_CACHE_STABLE
+    );
 
     // Sort so active subscriptions come first, then upcoming, then ended
     const statusOrder: Record<string, number> = { active: 0, upcoming: 1, ended: 2 };
