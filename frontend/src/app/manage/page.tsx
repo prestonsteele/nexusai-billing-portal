@@ -300,103 +300,78 @@ export default function ManagePage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getPriceTypeLabel = (price: any): string => {
-    const type = price.price_type ?? "";
-    const labels: Record<string, string> = {
-      usage_price: "Per Unit",
-      fixed_price: "Fixed Fee",
-      unit_price: "Per Unit",
-      package_price: "Package",
-      tiered_price: "Tiered",
-      tiered_package_price: "Tiered Pkg",
-      matrix_price: "Matrix",
-      bulk_price: "Bulk",
-      bps_price: "BPS",
-      tiered_bps_price: "Tiered BPS",
-      bulk_bps_price: "Bulk BPS",
-      threshold_total_amount_price: "Threshold",
-      unit_with_percent_price: "Unit + %",
-      grouped_allocation_price: "Grouped",
+    if (price.price_type === "fixed_price") return "Fixed Fee";
+    const modelLabels: Record<string, string> = {
+      unit: "Per Unit",
+      tiered: "Tiered",
+      package: "Package",
+      matrix: "Matrix",
+      bulk: "Bulk",
+      bps: "BPS",
+      tiered_bps: "Tiered BPS",
+      bulk_bps: "Bulk BPS",
+      tiered_package: "Tiered Pkg",
     };
-    return labels[type] ?? (type.replace(/_price$/, "").replace(/_/g, " ") || "Usage");
+    const model = price.model_type ?? "";
+    return modelLabels[model] ?? (model.replace(/_/g, " ") || "Usage");
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getPriceRate = (price: any): string => {
-    const type: string = price.price_type ?? "";
+    const priceType: string = price.price_type ?? "";
+    const modelType: string = price.model_type ?? "";
 
-    // Fixed fee
-    if (type === "fixed_price" || (price.fixed_price_quantity != null && price.fixed_price_quantity > 0)) {
+    // Fixed fee — price_type tells us it's fixed, model_type tells us the shape
+    if (priceType === "fixed_price") {
       const amount = parseFloat(price.unit_config?.unit_amount ?? "0");
       const qty = price.fixed_price_quantity ?? 1;
       return `${formatUSD(amount * qty)} / ${price.cadence ?? "period"}`;
     }
 
-    // Usage/unit price — Orb returns price_type "usage_price" for all usage-based unit prices
-    if ((type === "usage_price" || type === "unit_price") && price.unit_config?.unit_amount) {
-      const amt = parseFloat(price.unit_config.unit_amount);
-      return `${formatRate(amt)} / unit`;
+    // Use model_type to determine rate shape (price_type is always "usage_price" for usage)
+    if (modelType === "unit" && price.unit_config?.unit_amount) {
+      return `${formatRate(parseFloat(price.unit_config.unit_amount))} / unit`;
     }
 
-    // Package price
-    if (type === "package_price" && price.package_config) {
+    if (modelType === "tiered") {
+      const tiers = price.tiered_config?.tiers ?? [];
+      if (tiers.length > 0) {
+        const first = parseFloat(tiers[0]?.unit_amount ?? "0");
+        return `From ${formatRate(first)} / unit · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+      }
+      return "Tiered";
+    }
+
+    if (modelType === "package" && price.package_config) {
       const amt = parseFloat(price.package_config.package_amount ?? "0");
       const size = Number(price.package_config.package_size ?? 1);
       return `${formatUSD(amt)} / ${size.toLocaleString()} units`;
     }
 
-    // Tiered price
-    if (type === "tiered_price") {
-      const tiers = price.tiered_config?.tiers ?? [];
+    if (modelType === "bulk") {
+      const tiers = price.bulk_config?.tiers ?? [];
       if (tiers.length > 0) {
         const first = parseFloat(tiers[0]?.unit_amount ?? "0");
-        return `From ${formatUSD(first)} / unit · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+        return `From ${formatRate(first)} / unit · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
       }
-      return "Tiered";
+      return "Bulk";
     }
 
-    // Tiered package
-    if (type === "tiered_package_price") {
+    if (modelType === "matrix") return "Matrix · varies by dimension";
+
+    if (modelType === "bps" && price.bps_config?.bps) return `${price.bps_config.bps} bps`;
+
+    if (modelType === "tiered_bps") {
+      const tiers = price.tiered_bps_config?.tiers ?? [];
+      return `Tiered BPS · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+    }
+
+    if (modelType === "tiered_package") {
       const tiers = price.tiered_package_config?.tiers ?? [];
       return `Tiered pkg · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
     }
 
-    // Matrix
-    if (type === "matrix_price" || type.includes("matrix")) {
-      return "Matrix · varies by dimension";
-    }
-
-    // BPS
-    if (type === "bps_price" && price.bps_config?.bps) {
-      return `${price.bps_config.bps} bps`;
-    }
-    if (type === "tiered_bps_price") {
-      const tiers = price.tiered_bps_config?.tiers ?? [];
-      return `Tiered BPS · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
-    }
-    if (type === "bulk_bps_price") {
-      const tiers = price.bulk_bps_config?.tiers ?? [];
-      return `Bulk BPS · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
-    }
-
-    // Bulk
-    if (type === "bulk_price") {
-      const tiers = price.bulk_config?.tiers ?? [];
-      return `Bulk · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
-    }
-
-    // Threshold total
-    if (type === "threshold_total_amount_price") {
-      const min = price.threshold_total_amount_config?.minimum_amount ?? "0";
-      return `${formatUSD(parseFloat(min))} minimum`;
-    }
-
-    // Unit with percent
-    if (type === "unit_with_percent_price" && price.unit_with_percent_config?.unit_amount) {
-      return `${formatUSD(parseFloat(price.unit_with_percent_config.unit_amount))} / unit`;
-    }
-
-    // Last resort: show price_type in readable form rather than a dead-end message
-    if (type) return type.replace(/_price$/, "").replace(/_/g, " ");
+    if (modelType) return modelType.replace(/_/g, " ");
     return "—";
   };
 
