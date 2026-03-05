@@ -292,44 +292,103 @@ export default function ManagePage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getPriceTypeLabel = (price: any): string => {
-    if (price.fixed_price_quantity != null) return "Fixed Fee";
+    if (price.fixed_price_quantity != null && price.fixed_price_quantity > 0) return "Fixed Fee";
     const labels: Record<string, string> = {
       unit_price: "Per Unit",
       package_price: "Package",
       tiered_price: "Tiered",
+      tiered_package_price: "Tiered Pkg",
       matrix_price: "Matrix",
       bulk_price: "Bulk",
       bps_price: "BPS",
       tiered_bps_price: "Tiered BPS",
+      bulk_bps_price: "Bulk BPS",
+      threshold_total_amount_price: "Threshold",
+      unit_with_percent_price: "Unit + %",
+      grouped_allocation_price: "Grouped",
     };
-    return labels[price.price_type] ?? (price.price_type ?? "").replace(/_price$/, "").replace(/_/g, " ");
+    const type = price.price_type ?? "";
+    return labels[type] ?? (type.replace(/_price$/, "").replace(/_/g, " ") || "Usage");
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getPriceRate = (price: any): string => {
     const type: string = price.price_type ?? "";
-    if (price.fixed_price_quantity != null) {
+
+    // Fixed fee (unit price with a fixed quantity)
+    if (price.fixed_price_quantity != null && price.fixed_price_quantity > 0) {
       const amount = parseFloat(price.unit_config?.unit_amount ?? "0");
       const qty = price.fixed_price_quantity ?? 1;
-      return `${formatUSD(amount * qty)} / ${price.cadence}`;
+      return `${formatUSD(amount * qty)} / ${price.cadence ?? "period"}`;
     }
+
+    // Unit price
     if (type === "unit_price" && price.unit_config?.unit_amount) {
       const amt = parseFloat(price.unit_config.unit_amount);
-      return `${formatUSD(amt)} per unit`;
+      return `${formatUSD(amt)} / unit`;
     }
+
+    // Package price
     if (type === "package_price" && price.package_config) {
-      const { package_amount, package_size } = price.package_config;
-      return `${formatUSD(parseFloat(package_amount))} per ${Number(package_size).toLocaleString()} units`;
+      const amt = parseFloat(price.package_config.package_amount ?? "0");
+      const size = Number(price.package_config.package_size ?? 1);
+      return `${formatUSD(amt)} / ${size.toLocaleString()} units`;
     }
+
+    // Tiered price
     if (type === "tiered_price") {
       const tiers = price.tiered_config?.tiers ?? [];
-      return `Tiered · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+      if (tiers.length > 0) {
+        const first = parseFloat(tiers[0]?.unit_amount ?? "0");
+        return `From ${formatUSD(first)} / unit · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+      }
+      return "Tiered";
     }
-    if (type === "matrix_price") return "Matrix · varies by dimension";
+
+    // Tiered package
+    if (type === "tiered_package_price") {
+      const tiers = price.tiered_package_config?.tiers ?? [];
+      return `Tiered pkg · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+    }
+
+    // Matrix
+    if (type === "matrix_price" || type.includes("matrix")) {
+      return "Matrix · varies by dimension";
+    }
+
+    // BPS
     if (type === "bps_price" && price.bps_config?.bps) {
       return `${price.bps_config.bps} bps`;
     }
-    return "See plan details";
+    if (type === "tiered_bps_price") {
+      const tiers = price.tiered_bps_config?.tiers ?? [];
+      return `Tiered BPS · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+    }
+    if (type === "bulk_bps_price") {
+      const tiers = price.bulk_bps_config?.tiers ?? [];
+      return `Bulk BPS · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+    }
+
+    // Bulk
+    if (type === "bulk_price") {
+      const tiers = price.bulk_config?.tiers ?? [];
+      return `Bulk · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+    }
+
+    // Threshold total
+    if (type === "threshold_total_amount_price") {
+      const min = price.threshold_total_amount_config?.minimum_amount ?? "0";
+      return `${formatUSD(parseFloat(min))} minimum`;
+    }
+
+    // Unit with percent
+    if (type === "unit_with_percent_price" && price.unit_with_percent_config?.unit_amount) {
+      return `${formatUSD(parseFloat(price.unit_with_percent_config.unit_amount))} / unit`;
+    }
+
+    // Last resort: show price_type in readable form rather than a dead-end message
+    if (type) return type.replace(/_price$/, "").replace(/_/g, " ");
+    return "—";
   };
 
   const CADENCE_LABELS: Record<string, string> = {

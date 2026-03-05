@@ -19,6 +19,19 @@ export async function GET(
     // with all pricing model configs (unit_config, tiered_config, etc.)
     const subscription = await orb.subscriptions.fetch(subscriptionId, ORB_CACHE_STABLE);
 
+    // Log price interval structure to help debug display issues
+    if (subscription.price_intervals?.length) {
+      const sample = subscription.price_intervals[0]?.price;
+      console.log("[plan] first price sample:", JSON.stringify({
+        price_type: sample?.price_type,
+        billable_metric: sample?.billable_metric,
+        unit_config: (sample as any)?.unit_config,
+        package_config: (sample as any)?.package_config,
+        tiered_config: (sample as any)?.tiered_config,
+        fixed_price_quantity: (sample as any)?.fixed_price_quantity,
+      }, null, 2));
+    }
+
     await kvSet(kvKey, subscription);
     return NextResponse.json(subscription);
   } catch (error) {
