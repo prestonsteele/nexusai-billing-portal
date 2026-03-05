@@ -33,7 +33,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { format, parseISO, addYears } from "date-fns";
-import { Plus, Trash2, Bell, RefreshCw, CreditCard, AlertTriangle, Check, DollarSign } from "lucide-react";
+import { Plus, Trash2, Bell, RefreshCw, CreditCard, AlertTriangle, Check, DollarSign, PhoneCall } from "lucide-react";
 
 interface TopUp {
   id: string;
@@ -58,7 +58,8 @@ const PRESET_AMOUNTS = [20, 50, 100];
 const MAX_CUSTOM_AMOUNT = 500;
 
 export default function ManagePage() {
-  const { customerId } = useApp();
+  const { customerId, customer } = useApp();
+  const isEnterprise = customer === "ENTERPRISE";
   const [loading, setLoading] = useState(true);
   const [topUps, setTopUps] = useState<TopUp[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -319,7 +320,20 @@ export default function ManagePage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="relative grid gap-8 lg:grid-cols-2">
+        {isEnterprise && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/70 backdrop-blur-[2px]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <PhoneCall className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="text-center px-6">
+              <p className="font-semibold text-foreground">Contact your sales team</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Please contact your sales team if you would like to increase your credit package.
+              </p>
+            </div>
+          </div>
+        )}
         {/* Add Credits */}
         <Card>
           <CardHeader>
