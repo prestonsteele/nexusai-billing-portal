@@ -421,7 +421,7 @@ export default function ManagePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Manage Billing</h1>
         <p className="text-muted-foreground">
-          Add credits, configure auto top-ups, and set up spend alerts
+          Add credits, configure auto top-ups, and manage spend alerts
         </p>
       </div>
 
