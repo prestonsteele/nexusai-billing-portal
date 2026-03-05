@@ -24,6 +24,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { DateRangeSelector, getDateRange, type DateRangeOption } from "@/components/filters/DateRangeSelector";
 import { fetchWithCache } from "@/lib/cache";
+import { ApiTooltip } from "@/components/ui/api-tooltip";
 
 interface UsageDataPoint {
   date: string;
@@ -185,7 +186,15 @@ export default function UsagePage() {
         <TabsContent value="chart" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-              <CardTitle>Usage Over Time</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle>Usage Over Time</CardTitle>
+                <ApiTooltip
+                  method="GET"
+                  endpoint="/v1/subscriptions/{id}/usage"
+                  description="Returns time-series usage data per billable metric, bucketed by day across the selected timeframe."
+                  details="Each metric maps to a billable_metric defined in Orb. The granularity, timeframe_start, and timeframe_end params control the query window."
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Metric:</span>
                 <Select value={selectedMetric} onValueChange={setSelectedMetric}>
@@ -220,7 +229,15 @@ export default function UsagePage() {
         <TabsContent value="table">
           <Card>
             <CardHeader>
-              <CardTitle>Daily Usage Breakdown</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle>Daily Usage Breakdown</CardTitle>
+                <ApiTooltip
+                  method="GET"
+                  endpoint="/v1/subscriptions/{id}/usage"
+                  description="Same usage endpoint — the table view shows the raw daily data points returned by the API."
+                  details="Each row is one timeframe_start bucket. The quantity field reflects total events ingested for that metric on that day."
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (

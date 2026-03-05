@@ -17,6 +17,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { Download, FileText, ExternalLink } from "lucide-react";
 import { fetchWithCache } from "@/lib/cache";
+import { ApiTooltip } from "@/components/ui/api-tooltip";
 
 interface Invoice {
   id: string;
@@ -218,7 +219,15 @@ export default function InvoicesPage() {
         {/* Invoice List */}
         <Card>
           <CardHeader>
-            <CardTitle>Invoice History</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle>Invoice History</CardTitle>
+              <ApiTooltip
+                method="GET"
+                endpoint="/v1/invoices"
+                description="Returns all invoices for the customer, including issued, draft, and void statuses."
+                details="Invoices are automatically generated at the end of each billing period. Draft invoices represent in-progress periods and update in real time as usage is ingested."
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (

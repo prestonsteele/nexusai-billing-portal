@@ -33,7 +33,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { format, parseISO, addYears } from "date-fns";
-import { Plus, Trash2, Bell, RefreshCw, CreditCard, AlertTriangle, Check, DollarSign, PhoneCall } from "lucide-react";
+import { Plus, Trash2, Bell, RefreshCw, CreditCard, AlertTriangle, Check, DollarSign, PhoneCall, LayoutList } from "lucide-react";
+import { ApiTooltip } from "@/components/ui/api-tooltip";
+import { fetchWithCache } from "@/lib/cache";
 
 interface TopUp {
   id: string;
@@ -64,6 +66,10 @@ export default function ManagePage() {
   const [topUps, setTopUps] = useState<TopUp[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [creditBalance, setCreditBalance] = useState(0);
+
+  // Plan state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [subscription, setSubscription] = useState<any>(null);
 
   // Add Credits state
   const [selectedPreset, setSelectedPreset] = useState<number | "custom" | null>(null);
@@ -109,6 +115,12 @@ export default function ManagePage() {
         const topUpsData = await topUpsRes.json();
         const alertsData = await alertsRes.json();
         const creditsData = await creditsRes.json();
+
+        // Fetch subscription for plan overview
+        const subsData = await fetchWithCache(`/api/customer/${customerId}/subscriptions`);
+        if (Array.isArray(subsData) && subsData.length > 0) {
+          setSubscription(subsData[0]);
+        }
 
         setTopUps(Array.isArray(topUpsData) ? topUpsData : []);
         setAlerts(Array.isArray(alertsData) ? alertsData : []);
@@ -276,6 +288,56 @@ export default function ManagePage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getPriceTypeLabel = (price: any): string => {
+    if (price.fixed_price_quantity != null) return "Fixed Fee";
+    const labels: Record<string, string> = {
+      unit_price: "Per Unit",
+      package_price: "Package",
+      tiered_price: "Tiered",
+      matrix_price: "Matrix",
+      bulk_price: "Bulk",
+      bps_price: "BPS",
+      tiered_bps_price: "Tiered BPS",
+    };
+    return labels[price.price_type] ?? (price.price_type ?? "").replace(/_price$/, "").replace(/_/g, " ");
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getPriceRate = (price: any): string => {
+    const type: string = price.price_type ?? "";
+    if (price.fixed_price_quantity != null) {
+      const amount = parseFloat(price.unit_config?.unit_amount ?? "0");
+      const qty = price.fixed_price_quantity ?? 1;
+      return `${formatUSD(amount * qty)} / ${price.cadence}`;
+    }
+    if (type === "unit_price" && price.unit_config?.unit_amount) {
+      const amt = parseFloat(price.unit_config.unit_amount);
+      return `${formatUSD(amt)} per unit`;
+    }
+    if (type === "package_price" && price.package_config) {
+      const { package_amount, package_size } = price.package_config;
+      return `${formatUSD(parseFloat(package_amount))} per ${Number(package_size).toLocaleString()} units`;
+    }
+    if (type === "tiered_price") {
+      const tiers = price.tiered_config?.tiers ?? [];
+      return `Tiered · ${tiers.length} tier${tiers.length !== 1 ? "s" : ""}`;
+    }
+    if (type === "matrix_price") return "Matrix · varies by dimension";
+    if (type === "bps_price" && price.bps_config?.bps) {
+      return `${price.bps_config.bps} bps`;
+    }
+    return "See plan details";
+  };
+
+  const CADENCE_LABELS: Record<string, string> = {
+    monthly: "Monthly",
+    annual: "Annual",
+    quarterly: "Quarterly",
+    one_time: "One-time",
+    semi_annual: "Semi-annual",
+  };
+
   const getAlertTypeBadge = (type: string) => {
     switch (type) {
       case "cost_exceeded":
@@ -320,6 +382,98 @@ export default function ManagePage() {
         </CardContent>
       </Card>
 
+      {/* Current Plan */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <LayoutList className="h-5 w-5" />
+              Current Plan
+            </CardTitle>
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/subscriptions/{id}"
+              description="Returns the full subscription object including plan details, all price intervals, billing cadence, and current period dates."
+              details="Price intervals reflect every active charge on the subscription — fixed fees, usage-based prices, and any mid-period amendments. Useful for displaying transparent plan details to customers."
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : subscription ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Plan</p>
+                  <p className="font-semibold">{subscription.plan?.name ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={subscription.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                    {subscription.status}
+                  </Badge>
+                </div>
+                {subscription.current_billing_period_start_date && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Current Period</p>
+                    <p className="text-sm">
+                      {format(parseISO(subscription.current_billing_period_start_date), "MMM d")}
+                      {" – "}
+                      {subscription.current_billing_period_end_date
+                        ? format(parseISO(subscription.current_billing_period_end_date), "MMM d, yyyy")
+                        : "ongoing"}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {subscription.price_intervals?.length > 0 && (
+                <div className="relative overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="pb-2 text-left font-medium text-muted-foreground">Price</th>
+                        <th className="pb-2 text-left font-medium text-muted-foreground">Type</th>
+                        <th className="pb-2 text-left font-medium text-muted-foreground">Metric</th>
+                        <th className="pb-2 text-left font-medium text-muted-foreground">Cadence</th>
+                        <th className="pb-2 text-right font-medium text-muted-foreground">Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {subscription.price_intervals.map((interval: any, i: number) => {
+                        const price = interval.price;
+                        if (!price) return null;
+                        return (
+                          <tr key={price.id ?? i}>
+                            <td className="py-2.5 pr-4 font-medium">{price.name}</td>
+                            <td className="py-2.5 pr-4">
+                              <Badge variant="secondary" className="text-xs font-normal">
+                                {getPriceTypeLabel(price)}
+                              </Badge>
+                            </td>
+                            <td className="py-2.5 pr-4 text-muted-foreground">
+                              {price.billable_metric?.name ?? <span className="text-muted-foreground/40">—</span>}
+                            </td>
+                            <td className="py-2.5 pr-4 text-muted-foreground">
+                              {CADENCE_LABELS[price.cadence] ?? price.cadence ?? "—"}
+                            </td>
+                            <td className="py-2.5 text-right tabular-nums">{getPriceRate(price)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex h-24 items-center justify-center text-muted-foreground">
+              No active subscription found
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="relative grid gap-8 lg:grid-cols-2">
         {isEnterprise && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/70 backdrop-blur-[2px]">
@@ -337,10 +491,18 @@ export default function ManagePage() {
         {/* Add Credits */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Add Credits
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Add Credits
+              </CardTitle>
+              <ApiTooltip
+                method="POST"
+                endpoint="/v1/customers/{id}/credits/ledger_transactions"
+                description="Creates a new credit grant for the customer with a specified amount, cost basis, and optional expiry date."
+                details="Each grant creates an independent credit block. Credits are consumed in FIFO order and can have different per-unit cost bases — enabling tiered prepaid pricing across customer segments."
+              />
+            </div>
             <CardDescription>
               Purchase credits (expires in 1 year)
             </CardDescription>
@@ -426,10 +588,18 @@ export default function ManagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Auto Top-Ups
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Auto Top-Ups
+                </CardTitle>
+                <ApiTooltip
+                  method="POST"
+                  endpoint="/v1/customers/{id}/credits/top_up_transactions"
+                  description="Configures automatic credit replenishment triggered when the customer's balance falls to or below a threshold amount."
+                  details="Top-ups fire asynchronously via Orb's event system. Each rule specifies a threshold, top-up amount, and per-unit cost basis — ensuring uninterrupted service for prepaid customers."
+                />
+              </div>
               <CardDescription>
                 Automatically add credits when balance drops
               </CardDescription>
@@ -548,10 +718,18 @@ export default function ManagePage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Spend Alerts
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Spend Alerts
+              </CardTitle>
+              <ApiTooltip
+                method="POST"
+                endpoint="/v1/alerts"
+                description="Creates webhook-triggered alerts when usage or costs cross configured thresholds."
+                details="Supports cost_exceeded, usage_exceeded, credit_balance_dropped, credit_balance_depleted, and credit_balance_recovered events. Alerts fire in real time as Orb processes ingested events."
+              />
+            </div>
             <CardDescription>
               Get notified when usage or costs exceed thresholds
             </CardDescription>

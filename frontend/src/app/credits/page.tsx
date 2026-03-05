@@ -25,6 +25,7 @@ import {
 import { format, parseISO, subDays, startOfDay } from "date-fns";
 import { getDateRange } from "@/components/filters/DateRangeSelector";
 import { fetchWithCache } from "@/lib/cache";
+import { ApiTooltip } from "@/components/ui/api-tooltip";
 import { Coins, TrendingDown, Calendar, AlertCircle } from "lucide-react";
 
 interface CreditBlock {
@@ -325,7 +326,15 @@ export default function CreditsPage() {
       {/* Daily Burn Rate Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Credit Usage (Last 30 Days)</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Daily Credit Usage (Last 30 Days)</CardTitle>
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/subscriptions/{id}/usage"
+              description="Credit burn is derived from usage data — daily quantities are weighted by total ledger decrements to estimate per-day spend."
+              details="Orb tracks credits separately from raw usage. The ledger records every grant, decrement, and expiration with full auditability."
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -379,7 +388,15 @@ export default function CreditsPage() {
       {/* Credit Blocks */}
       <Card>
         <CardHeader>
-          <CardTitle>Credit Blocks</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Credit Blocks</CardTitle>
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/customers/{id}/credits"
+              description="Returns all credit blocks for the customer — each grant is a separate block with its own balance, expiry, and cost basis."
+              details="Credits are consumed in FIFO order by default. Per-unit cost basis enables flexible prepaid pricing where different customers pay different rates for the same credits."
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -436,7 +453,15 @@ export default function CreditsPage() {
       {/* Credit Ledger */}
       <Card>
         <CardHeader>
-          <CardTitle>Credit Ledger</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Credit Ledger</CardTitle>
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/customers/{id}/credits/ledger"
+              description="A full immutable audit trail of every credit event: grants, usage decrements, expirations, amendments, and voids."
+              details="Every entry records the starting and ending balance, making it trivial to reconcile credit balances at any point in time. Essential for enterprise billing transparency."
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (

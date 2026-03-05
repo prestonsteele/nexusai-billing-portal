@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { type GroupingKey } from "@/lib/orb";
 import { fetchWithCache } from "@/lib/cache";
+import { ApiTooltip } from "@/components/ui/api-tooltip";
 import {
   Coins,
   Cpu,
@@ -219,7 +220,7 @@ export default function DashboardPage() {
           const costs = data.data[data.data.length - 1];
           setStats((prev) => ({
             ...prev,
-            currentPeriodCost: `$${parseFloat(costs.total || "0").toFixed(2)}`,
+            currentPeriodCost: `$${parseFloat(costs.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           }));
 
           // Process cost breakdown by price
@@ -359,7 +360,15 @@ export default function DashboardPage() {
       {/* Usage Chart */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-          <CardTitle>Usage Over Time</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Usage Over Time</CardTitle>
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/subscriptions/{id}/usage"
+              description="Returns time-series usage data per billable metric for the selected date range, bucketed by day."
+              details="Supports filtering by timeframe and grouping by event properties. Ideal for visualizing consumption trends and building forecasts."
+            />
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Metric:</span>
             <Select value={selectedMetric} onValueChange={setSelectedMetric}>
@@ -398,7 +407,16 @@ export default function DashboardPage() {
       {/* Cost Breakdown with Group By */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Cost Breakdown</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Cost Breakdown</CardTitle>
+            <ApiTooltip
+              method="GET"
+              endpoint="/v1/subscriptions/{id}/costs"
+              description="Returns cost totals broken down by price, with periodic or cumulative view modes."
+              details="When combined with group_by via /v1/prices/evaluate, costs can be attributed by dimension (region, model, team) — critical for enterprise chargeback reporting."
+              align="right"
+            />
+          </div>
           <GroupBySelector
             value={groupBy}
             onChange={setGroupBy}
