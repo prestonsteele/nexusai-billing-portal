@@ -692,17 +692,9 @@ export default function ManagePage() {
                       Amount of credits to add when triggered
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Cost Basis (per unit)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="1.00"
-                      value={topUpCostBasis}
-                      onChange={(e) => setTopUpCostBasis(e.target.value)}
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Credits are billed at $1.00 each and an invoice will be auto-collected on trigger.
+                  </p>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setTopUpDialogOpen(false)}>

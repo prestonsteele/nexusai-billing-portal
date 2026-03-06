@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrbClient } from "@/lib/orb";
 
+const PER_UNIT_COST_BASIS = "1.00"; // $1 per credit unit
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ customerId: string }> }
@@ -42,11 +44,11 @@ export async function POST(
       currency: body.currency || "USD",
       threshold: body.threshold,
       amount: body.amount,
-      per_unit_cost_basis: body.per_unit_cost_basis,
+      per_unit_cost_basis: PER_UNIT_COST_BASIS,
       invoice_settings: {
-        auto_collection: body.auto_collection ?? true,
-        net_terms: body.net_terms ?? 0,
-        memo: body.memo || null,
+        auto_collection: true,
+        net_terms: 0,
+        memo: `Auto top-up: ${body.amount} credits at $${PER_UNIT_COST_BASIS} each`,
       },
       expires_after: body.expires_after || null,
       expires_after_unit: body.expires_after_unit || null,
